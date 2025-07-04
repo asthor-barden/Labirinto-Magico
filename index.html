@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Labirinto Mágico</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <style>
+        :root {
+            --scratch-blue: #4c97ff;
+            --scratch-purple: #855cd6;
+            --scratch-pink: #ff4c8c;
+            --scratch-yellow: #ffb100;
+            --scratch-yellow2: #ff6600;
+            --scratch-orange: #ffab19;
+            --scratch-green: #00ff00;
+            --scratch-light-green: #a1ff8c;
+            --scratch-bg: #e6f3ff;
+            --scratch-text: #333333;
+            --scratch-shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--scratch-blue), var(--scratch-purple));
+            color: var(--scratch-text);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-container {
+            width: 100vw;
+            max-width: 1200px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            border-radius: 25px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px var(--scratch-shadow);
+            background: var(--scratch-bg);
+        }
+
+        #game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            background: var(--scratch-yellow);
+            border-bottom: 5px solid var(--scratch-orange);
+            z-index: 10;
+        }
+
+        #game-title {
+            font-size: clamp(1.8rem, 4vw, 2.2rem);
+            font-weight: 700;
+            color: var(--scratch-blue);
+            text-shadow: 0 0 10px var(--scratch-shadow);
+        }
+
+        #game-stats {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .stat-box {
+            background: var(--scratch-bg);
+            padding: 0.5rem 1rem;
+            border-radius: 15px;
+            border: 3px solid var(--scratch-blue);
+            min-width: clamp(100px, 10vw, 130px);
+            text-align: center;
+            box-shadow: 0 5px 10px var(--scratch-shadow);
+        }
+
+        .stat-label {
+            font-size: clamp(0.8rem, 2vw, 1rem);
+            color: var(--scratch-purple);
+            font-weight: bold;
+        }
+
+        .stat-value {
+            font-size: clamp(1.2rem, 3vw, 1.4rem);
+            font-weight: bold;
+            color: var(--scratch-text);
+        }
+
+        #game-content {
+            display: flex;
+            flex: 1;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        #scene-container {
+            flex: 3;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 25px var(--scratch-shadow);
+            background: var(--scratch-bg);
+            position: relative;
+        }
+
+        #controls-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 1rem;
+            border: 4px solid var(--scratch-blue);
+            box-shadow: 0 0 20px var(--scratch-shadow);
+        }
+
+        .panel-title {
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+            margin-bottom: 1rem;
+            text-align: center;
+            color: var(--scratch-purple);
+            padding-bottom: 0.5rem;
+            border-bottom: 3px dotted var(--scratch-blue);
+        }
+
+        #command-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .command-btn {
+            background: linear-gradient(135deg, var(--scratch-blue), var(--scratch-purple));
+            border: none;
+            border-radius: 15px;
+            padding: clamp(1.2rem, 4vw, 1.5rem);
+            color: white;
+            font-size: clamp(2rem, 5vw, 2.5rem);
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 12px var(--scratch-shadow);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .command-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px var(--scratch-shadow);
+            filter: brightness(1.2);
+        }
+
+        #command-sequence {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 1rem;
+            max-height: 12rem;
+            overflow: auto;
+            margin-bottom: 1.5rem;
+            border: 3px dashed var(--scratch-blue);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .command-chip {
+            background: linear-gradient(135deg, var(--scratch-orange), var(--scratch-yellow));
+            padding: 0.75rem 1.25rem;
+            border-radius: 25px;
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 5px 10px var(--scratch-shadow);
+        }
+
+        .remove-chip {
+            background: none;
+            border: none;
+            color: var(--scratch-pink);
+            cursor: pointer;
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+        }
+
+        #action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+            margin-top: auto;
+        }
+
+        .action-btn {
+            padding: clamp(1rem, 3vw, 1.2rem);
+            border-radius: 15px;
+            border: none;
+            font-size: clamp(1.1rem, 2.5vw, 1.3rem);
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px 12px var(--scratch-shadow);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #execute-btn {
+            background: linear-gradient(135deg, var(--scratch-green), var(--scratch-light-green));
+            color: var(--scratch-text);
+            grid-column: span 2;
+        }
+
+        #execute-btn:hover {
+            background: linear-gradient(135deg, #00ff88, var(--scratch-green));
+            transform: translateY(-5px);
+        }
+
+        #reset-btn {
+            background: linear-gradient(135deg, var(--scratch-pink), #ff9999);
+            color: var(--scratch-text);
+        }
+
+        #reset-btn:hover {
+            background: linear-gradient(135deg, #ff8888, var(--scratch-pink));
+            transform: translateY(-5px);
+        }
+
+        #clear-btn {
+            background: linear-gradient(135deg, var(--scratch-blue), #99c2ff);
+            color: var(--scratch-text);
+        }
+
+        #clear-btn:hover {
+            background: linear-gradient(135deg, #66a3ff, var(--scratch-blue));
+            transform: translateY(-5px);
+        }
+
+        #level-indicator {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: var(--scratch-yellow);
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            font-weight: bold;
+            border: 3px solid var(--scratch-orange);
+            z-index: 10;
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            color: var(--scratch-purple);
+        }
+
+        #player-info {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            background: var(--scratch-blue);
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border: 3px solid var(--scratch-purple);
+            z-index: 10;
+        }
+
+        .player-avatar {
+            width: clamp(40px, 5vw, 60px);
+            height: clamp(40px, 5vw, 60px);
+            border-radius: 50%;
+            background: var(--scratch-yellow);
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            border: 3px solid var(--scratch-blue);
+        }
+
+        #player-name {
+            font-weight: bold;
+            font-size: clamp(1.2rem, 3vw, 1.4rem);
+            color: var(--scratch-text);
+        }
+
+        #character-direction {
+            position: absolute;
+            bottom: 5rem;
+            left: 1rem;
+            background: var(--scratch-purple);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            color: white;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #completion-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--scratch-yellow);
+            padding: 2rem 3rem;
+            border-radius: 30px;
+            text-align: center;
+            border: 5px solid var(--scratch-orange);
+            z-index: 100;
+            display: none;
+            animation: bounce 1s ease;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translate(-50%, -50%) scale(1);}
+            40% {transform: translate(-50%, -50%) scale(1.2);}
+            60% {transform: translate(-50%, -50%) scale(1.1);}
+        }
+
+        #message-title {
+            font-size: clamp(2rem, 5vw, 3rem);
+            color: var(--scratch-green);
+            margin-bottom: 1.5rem;
+        }
+
+        #message-details {
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+            margin-bottom: 1.5rem;
+            color: var(--scratch-text);
+        }
+
+        #next-level-btn {
+            background: linear-gradient(135deg, var(--scratch-orange), var(--scratch-yellow2));
+            border: none;
+            color: var(--scratch-text);
+            padding: 1rem 2rem;
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+            border-radius: 40px;
+            cursor: pointer;
+        }
+
+        #music-control {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: var(--scratch-yellow);
+            width: clamp(40px, 5vw, 50px);
+            height: clamp(40px, 5vw, 50px);
+            border-radius: 50%;
+            font-size: clamp(1.5rem, 4vw, 1.8rem);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        #exit-label {
+            position: absolute;
+            background: var(--scratch-green);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            z-index: 10;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #help-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        #help-content {
+            background: var(--scratch-bg);
+            padding: 2rem;
+            border-radius: 20px;
+            border: 5px solid var(--scratch-blue);
+            max-width: 80%;
+            text-align: center;
+        }
+
+        #help-content h2 {
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            color: var(--scratch-purple);
+            margin-bottom: 1rem;
+        }
+
+        #help-content p {
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            color: var(--scratch-text);
+            margin-bottom: 1rem;
+        }
+
+        #help-content button {
+            background: linear-gradient(135deg, var(--scratch-green), #66ff99);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 20px;
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            color: var(--scratch-text);
+            cursor: pointer;
+        }
+
+        .star {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ffb100"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>') no-repeat center;
+            background-size: contain;
+            animation: star-fall 2s ease-out forwards;
+        }
+
+        @keyframes star-fall {
+            0% { transform: translateY(-100vh) scale(0.5); opacity: 1; }
+            100% { transform: translateY(100vh) scale(1); opacity: 0; }
+        }
+
+        @media (max-width: 768px) {
+            #game-content {
+                flex-direction: column;
+            }
+            #scene-container, #controls-container {
+                flex: 1;
+                height: 50%;
+            }
+            #command-buttons {
+                grid-template-columns: 1fr;
+            }
+            #action-buttons {
+                grid-template-columns: 1fr;
+            }
+            #execute-btn {
+                grid-column: span 1;
+            }
+        }
+        .icone-comando {
+  display: inline-block;
+  font-size: 1.5rem;
+}
+
+.girar-invertido {
+  transform: rotate(180deg) scaleX(-1);
+}
+
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="music-control">🎵</div>
+        <div id="help-overlay">
+            <div id="help-overlay">
+  <div id="help-content">
+    <h2>Bem-vindo ao Labirinto Mágico! 🌟</h2>
+    <p>Guie o gatinho até a CHEGADA:</p>
+    <p><span style="font-size: 1.5rem;">↑</span> <strong>Frente</strong>: Anda na direção do rosto.</p>
+    <p><span style="font-size: 1.5rem;">⟲</span> <strong>Esquerda</strong>: Girar para a esquerda.</p>
+    <p><span style="font-size: 1.5rem;">⟳</span> <strong>Direita</strong>: Girar para a direita.</p>
+    <button id="close-help">COMEÇAR!</button>
+  </div>
+</div>
+
+        </div>
+        <div id="star-container"></div>
+        <div id="game-header">
+            <div id="game-title">LABIRINTO MÁGICO</div>
+            <div id="game-stats">
+                <div class="stat-box">
+                    <div class="stat-label">FASE</div>
+                    <div class="stat-value" id="level-display">1/3</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">MOVIMENTOS</div>
+                    <div class="stat-value" id="moves-display">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">TEMPO</div>
+                    <div class="stat-value" id="time-display">00:00</div>
+                </div>
+            </div>
+        </div>
+        <div id="game-content">
+            <div id="scene-container">
+                <div id="level-indicator">Nível: <span id="level-name">Fácil</span></div>
+                <div id="player-info">
+                    <div class="player-avatar">🐱</div>
+                    <div id="player-name">Amiguinho</div>
+                </div>
+                <div id="character-direction">
+                    <span id="direction-indicator">⬆️</span>
+                    <span id="direction-text">Olhando para: Norte</span>
+                </div>
+                <div id="exit-label">🏁 CHEGADA</div>
+                <div id="completion-message">
+                    <div id="message-title">PARABÉNS! 🎉</div>
+                    <div id="message-details">Você completou em <span id="final-moves">0</span> movimentos!</div>
+                    <button id="next-level-btn">PRÓXIMA FASE</button>
+                </div>
+            </div>
+            <div id="controls-container">
+                <div class="panel-title">COMANDOS DO PERSONAGEM</div>
+                <div id="command-buttons">
+                    <button class="command-btn" data-command="FRENTE">⬆️</button>
+                    <button class="command-btn" data-command="DIREITA">
+                    <span style="display:inline-block; transform: rotate(180deg);">↪️</span>
+                    </button>
+                     <button class="command-btn" data-command="ESQUERDA">
+                    <span style="display:inline-block; transform: rotate(180deg);">↩️</span>
+                     </button>
+                </div>
+                <div class="panel-title">SEQUÊNCIA DE COMANDOS</div>
+                <div id="command-sequence"></div>
+                <div id="action-buttons">
+                    <button id="execute-btn">▶️ EXECUTAR</button>
+                    <button id="reset-btn">🔄 REINICIAR</button>
+                    <button id="clear-btn">🗑️ LIMPAR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="bg-music" loop autoplay>
+  <source src="Lofi do gato.mp3" type="audio/mpeg">
+  Seu navegador não suporta áudio HTML5.
+</audio>
+
+<script>
+  const audio = document.getElementById('bg-music');
+  audio.volume = 0.3; // 30% do volume
+</script>
+
+    <audio id="move-sound">
+        <source src="Pulo - Efeito Sonoro.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="turn-sound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="win-sound">
+        <source src="Gato Miau Efeitos Sonoros.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="error-sound">
+        <source src="Resposta errada Efeito sonoro.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const gameConfig = {
+            levels: [
+                { name: "Fácil", size: 5, moves: 8, complexity: 0.1 },
+                { name: "Médio", size: 7, moves: 15, complexity: 0.15 },
+                { name: "Difícil", size: 10, moves: 25, complexity: 0.2 }
+            ],
+            currentLevel: 0,
+            player: {
+                name: "Amiguinho",
+                avatar: "🐱",
+                moves: 0,
+                startTime: null
+            },
+            maze: null,
+            characterPosition: { x: 0, y: 0 },
+            exitPosition: { x: 0, y: 0 },
+            direction: 0, // 0: norte (z+), 1: leste (x+), 2: sul (z-), 3: oeste (x-)
+            commands: [],
+            timer: null,
+            musicPlaying: true
+        };
+
+        const dom = {
+            sceneContainer: document.getElementById('scene-container'),
+            commandSequence: document.getElementById('command-sequence'),
+            movesDisplay: document.getElementById('moves-display'),
+            timeDisplay: document.getElementById('time-display'),
+            levelDisplay: document.getElementById('level-display'),
+            levelName: document.getElementById('level-name'),
+            completionMessage: document.getElementById('completion-message'),
+            finalMoves: document.getElementById('final-moves'),
+            playerName: document.getElementById('player-name'),
+            charDirection: document.getElementById('character-direction'),
+            directionText: document.getElementById('direction-text'),
+            directionIndicator: document.getElementById('direction-indicator'),
+            exitLabel: document.getElementById('exit-label'),
+            starContainer: document.getElementById('star-container')
+        };
+
+        const sounds = {
+            bgMusic: document.getElementById('bg-music'),
+            move: document.getElementById('move-sound'),
+            turn: document.getElementById('turn-sound'),
+            win: document.getElementById('win-sound'),
+            error: document.getElementById('error-sound')
+        };
+
+        let scene, camera, renderer, character, characterGroup, controls;
+        let grassTexture;
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xe6f3ff);
+            scene.fog = new THREE.Fog(0xe6f3ff, 10, 30);
+
+            camera = new THREE.PerspectiveCamera(75, dom.sceneContainer.offsetWidth / dom.sceneContainer.offsetHeight, 0.1, 1000);
+            camera.position.set(0, 15, 15);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setClearColor(0xe6f3ff);
+            renderer.setSize(dom.sceneContainer.offsetWidth, dom.sceneContainer.offsetHeight);
+            renderer.shadowMap.enabled = true;
+            dom.sceneContainer.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(10, 20, 15);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 5;
+            controls.maxDistance = 20;
+            controls.maxPolarAngle = Math.PI / 2;
+
+            // Carregar textura de grama
+            const textureLoader = new THREE.TextureLoader();
+            grassTexture = textureLoader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
+            grassTexture.wrapS = THREE.RepeatWrapping;
+            grassTexture.wrapT = THREE.RepeatWrapping;
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updateExitLabelPosition();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function updateExitLabelPosition() {
+            const size = gameConfig.levels[gameConfig.currentLevel].size;
+            const scale = 2;
+            const vector = new THREE.Vector3(
+                (gameConfig.exitPosition.x - size / 2) * scale + scale / 2,
+                2,
+                (gameConfig.exitPosition.y - size / 2) * scale + scale / 2
+            );
+            vector.project(camera);
+            const x = (vector.x * 0.5 + 0.5) * dom.sceneContainer.offsetWidth;
+            const y = (-vector.y * 0.5 + 0.5) * dom.sceneContainer.offsetHeight;
+            dom.exitLabel.style.left = `${x}px`;
+            dom.exitLabel.style.top = `${y}px`;
+        }
+
+        function generateMaze(size, complexity) {
+            // Criar matriz de labirinto com paredes
+            const maze = Array(size).fill().map(() => Array(size).fill(1));
+            
+            // Definir entrada e saída
+            maze[0][0] = 0; // Entrada
+            maze[size-1][size-1] = 2; // Saída
+            
+            // Algoritmo de Depth-First Search para gerar caminho
+            const stack = [{x: 0, y: 0}];
+            const directions = [
+                {dx: 0, dy: -2}, // Norte
+                {dx: 2, dy: 0},  // Leste
+                {dx: 0, dy: 2},  // Sul
+                {dx: -2, dy: 0}  // Oeste
+            ];
+            
+            while (stack.length > 0) {
+                const current = stack.pop();
+                const {x, y} = current;
+                
+                // Embaralhar direções
+                shuffleArray(directions);
+                
+                for (const dir of directions) {
+                    const nx = x + dir.dx;
+                    const ny = y + dir.dy;
+                    
+                    if (nx >= 0 && nx < size && ny >= 0 && ny < size && maze[ny][nx] === 1) {
+                        // Remover parede entre célula atual e próxima
+                        maze[y + dir.dy/2][x + dir.dx/2] = 0;
+                        maze[ny][nx] = 0;
+                        stack.push({x: nx, y: ny});
+                    }
+                }
+            }
+            
+            // Garantir que o caminho até a saída esteja aberto
+            maze[size-1][size-1] = 2;
+            
+            // Adicionar caminhos alternativos
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    if (maze[y][x] === 1 && Math.random() < complexity) {
+                        maze[y][x] = 0;
+                    }
+                }
+            }
+
+            // Garantir que a chegada esteja livre
+            const exitX = size - 1;
+            const exitY = size - 1;
+            const neighbors = [];
+            if (exitY > 0) neighbors.push({x: exitX, y: exitY-1}); // norte
+            if (exitX < size-1) neighbors.push({x: exitX+1, y: exitY}); // leste
+            if (exitY < size-1) neighbors.push({x: exitX, y: exitY+1}); // sul
+            if (exitX > 0) neighbors.push({x: exitX-1, y: exitY}); // oeste
+            
+            let wallCount = 0;
+            neighbors.forEach(n => {
+                if (maze[n.y][n.x] === 1) wallCount++;
+            });
+            
+            // Se estiver bloqueada por 3 paredes, abrir uma direção
+            if (wallCount >= 2) {
+                // Escolher uma direção aleatória para abrir
+                const randIndex = Math.floor(Math.random() * neighbors.length);
+                const n = neighbors[randIndex];
+                maze[n.y][n.x] = 0;
+            }
+
+            gameConfig.exitPosition = { x: size - 1, y: size - 1 };
+            return maze;
+        }
+
+        // Função para embaralhar array
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function renderMaze(maze) {
+            while (scene.children.length > 2) {
+                scene.remove(scene.children[2]);
+            }
+
+            const size = maze.length;
+            const scale = 2;
+
+            // Chão como grama com textura
+            grassTexture.repeat.set(size, size);
+            const floorGeometry = new THREE.PlaneGeometry(size * scale, size * scale);
+            const floorMaterial = new THREE.MeshStandardMaterial({
+                map: grassTexture,
+                roughness: 0.9,
+                metalness: 0
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Paredes coloridas
+            const wallColors = [0x4c97ff, 0x855cd6, 0xff4c8c];
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const cell = maze[y][x];
+
+                    if (cell === 1) {
+                        const wallGeometry = new THREE.BoxGeometry(scale, scale, scale);
+                        const wallMaterial = new THREE.MeshStandardMaterial({
+                            color: wallColors[Math.floor(Math.random() * wallColors.length)],
+                            roughness: 0.6,
+                            metalness: 0.2
+                        });
+                        const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                        wall.position.set(
+                            (x - size / 2) * scale + scale / 2,
+                            scale / 2,
+                            (y - size / 2) * scale + scale / 2
+                        );
+                        wall.castShadow = true;
+                        wall.receiveShadow = true;
+                        scene.add(wall);
+                    } else if (cell === 2) {
+                        // Quadrado verde de chegada
+                        const arrivalGeometry = new THREE.PlaneGeometry(scale * 0.9, scale * 0.9);
+                        const arrivalMaterial = new THREE.MeshBasicMaterial({ 
+                            color: 0x00ff00,
+                            side: THREE.DoubleSide
+                        });
+                        const arrivalPlane = new THREE.Mesh(arrivalGeometry, arrivalMaterial);
+                        arrivalPlane.rotation.x = -Math.PI / 2;
+                        arrivalPlane.position.set(
+                            (x - size / 2) * scale + scale / 2,
+                            0.1, // Logo acima do chão
+                            (y - size / 2) * scale + scale / 2
+                        );
+                        scene.add(arrivalPlane);
+                    }
+                }
+            }
+
+            if (characterGroup) scene.remove(characterGroup);
+
+            characterGroup = new THREE.Group();
+
+            // Corpo do gato
+            const bodyGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffa500,
+                emissive: 0xff8c00,
+                emissiveIntensity: 0.2
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.5;
+            characterGroup.add(body);
+
+            // Cabeça do gato (detalhada)
+            const headGeometry = new THREE.SphereGeometry(0.4, 32, 32);
+            const head = new THREE.Mesh(headGeometry, bodyMaterial);
+            head.position.set(0, 1.2, 0.5);
+            characterGroup.add(head);
+
+            // Orelhas
+            const earGeometry = new THREE.ConeGeometry(0.2, 0.4, 4);
+            const earMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 });
+            
+            const leftEar = new THREE.Mesh(earGeometry, earMaterial);
+            leftEar.position.set(-0.3, 1.5, 0.4);
+            leftEar.rotation.z = Math.PI/6;
+            characterGroup.add(leftEar);
+            
+            const rightEar = new THREE.Mesh(earGeometry, earMaterial);
+            rightEar.position.set(0.3, 1.5, 0.4);
+            rightEar.rotation.z = -Math.PI/6;
+            characterGroup.add(rightEar);
+
+            // Olhos grandes e expressivos
+            const eyeGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.18, 1.25, 0.8);
+            characterGroup.add(leftEye);
+            
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.18, 1.25, 0.8);
+            characterGroup.add(rightEye);
+
+            // Pupilas
+            const pupilGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+            const pupilMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+            
+            const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+            leftPupil.position.set(-0.185, 1.25, 0.87);
+            characterGroup.add(leftPupil);
+            
+            const rightPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+            rightPupil.position.set(0.185, 1.25, 0.87);
+            characterGroup.add(rightPupil);
+
+            // Nariz
+            const noseGeometry = new THREE.SphereGeometry(0.06, 16, 16);
+            const noseMaterial = new THREE.MeshBasicMaterial({ color: 0xff69b4 });
+            const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+            nose.position.set(0, 1.15, 0.85);
+            characterGroup.add(nose);
+
+            // Bigodes bem visíveis
+            const whiskerGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.3, 8);
+            const whiskerMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            
+            // Bigodes esquerda
+            const whiskerLeft1 = new THREE.Mesh(whiskerGeometry, whiskerMaterial);
+            whiskerLeft1.position.set(-0.26, 1.15, 0.8);
+            whiskerLeft1.rotation.y = Math.PI/6;
+            whiskerLeft1.rotation.z = -Math.PI/2;
+            whiskerLeft1.rotation.x = -Math.PI/2;
+            characterGroup.add(whiskerLeft1);
+            
+            const whiskerLeft2 = new THREE.Mesh(whiskerGeometry, whiskerMaterial);
+            whiskerLeft2.position.set(-0.26, 1.15, 0.8);
+            whiskerLeft2.rotation.z = Math.PI/12;
+            whiskerLeft2.rotation.z = -Math.PI/2;
+            characterGroup.add(whiskerLeft2);
+            
+            const whiskerLeft3 = new THREE.Mesh(whiskerGeometry, whiskerMaterial);
+            whiskerLeft3.position.set(-0.26, 1.15, 0.8);
+            whiskerLeft3.rotation.y = -Math.PI/6;
+            whiskerLeft3.rotation.z = -Math.PI/2;
+            whiskerLeft3.rotation.x = -Math.PI/2;
+            characterGroup.add(whiskerLeft3);
+            
+            // Bigodes direita
+            const whiskerRight1 = new THREE.Mesh(whiskerGeometry, whiskerMaterial);
+            whiskerRight1.position.set(0.26, 1.15, 0.8);
+            whiskerRight1.rotation.y = -Math.PI/6;
+            whiskerRight1.rotation.z = -Math.PI/2;
+            whiskerRight1.rotation.x = -Math.PI/2;
+            characterGroup.add(whiskerRight1);
+            
+            const whiskerRight2 = new THREE.Mesh(whiskerGeometry, whiskerMaterial);
+            whiskerRight2.position.set(0.26, 1.15, 0.8);
+            whiskerRight2.rotation.z = -Math.PI/12;
+            whiskerRight2.rotation.z = -Math.PI/2;
+            characterGroup.add(whiskerRight2);
+            
+            const whiskerRight3 = new THREE.Mesh(whiskerGeometry, whiskerMaterial);
+            whiskerRight3.position.set(0.26, 1.15, 0.8);
+            whiskerRight3.rotation.y = Math.PI/6;
+            whiskerRight3.rotation.z = -Math.PI/2;
+            whiskerRight3.rotation.x = -Math.PI/2;
+            characterGroup.add(whiskerRight3);
+
+            // Rabo
+            const tailGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
+            const tail = new THREE.Mesh(tailGeometry, bodyMaterial);
+            tail.position.set(0, 0.6, -0.6);
+            tail.rotation.x = Math.PI/-5;
+            characterGroup.add(tail);
+
+            // Posicionar o grupo do personagem
+            characterGroup.position.set(
+                (0 - size / 2) * scale + scale / 2,
+                0,
+                (0 - size / 2) * scale + scale / 2
+            );
+            
+            // Rotacionar para que a frente seja onde está o rosto
+            characterGroup.rotation.y = Math.PI; // Começa olhando para norte (z positivo)
+            scene.add(characterGroup);
+
+            // Atualizar posição do personagem
+            gameConfig.characterPosition = { x: 0, y: 0 };
+            gameConfig.direction = 0; // Norte
+            updateDirectionIndicator();
+        }
+        
+        function startGame() {
+            gameConfig.player.startTime = new Date();
+            gameConfig.player.moves = 0;
+            dom.movesDisplay.textContent = gameConfig.player.moves;
+
+            if (gameConfig.timer) clearInterval(gameConfig.timer);
+            gameConfig.timer = setInterval(updateTimer, 1000);
+
+            const level = gameConfig.levels[gameConfig.currentLevel];
+            gameConfig.maze = generateMaze(level.size, level.complexity);
+            renderMaze(gameConfig.maze);
+
+            dom.levelDisplay.textContent = `${gameConfig.currentLevel + 1}/3`;
+            dom.levelName.textContent = level.name;
+
+            camera.position.set(0, level.size * 2, level.size * 1.5);
+            camera.lookAt(0, 0, 0);
+
+            gameConfig.commands = [];
+            updateCommandDisplay();
+
+            if (gameConfig.musicPlaying) {
+                sounds.bgMusic.play().catch(e => console.log("Autoplay bloqueado: ", e));
+            }
+        }
+        
+        function updateDirectionIndicator() {
+            const directions = ["Norte", "Leste", "Sul", "Oeste"];
+            const arrows = ["⬆️", "➡️", "⬇️", "⬅️"];
+            dom.directionText.textContent = `Olhando para: ${directions[gameConfig.direction]}`;
+            dom.directionIndicator.textContent = arrows[gameConfig.direction];
+            
+            // Rotacionar personagem para que o rosto esteja sempre na direção correta
+            characterGroup.rotation.y = gameConfig.direction * Math.PI / 2;
+        }
+        
+        function addCommand(command) {
+            gameConfig.commands.push(command);
+            updateCommandDisplay();
+            
+            // Efeito visual e sonoro
+            const buttons = document.querySelectorAll('.command-btn');
+            buttons.forEach(btn => {
+                if (btn.dataset.command === command) {
+                    btn.classList.add('highlight');
+                    setTimeout(() => btn.classList.remove('highlight'), 300);
+                }
+            });
+            
+            // Som de clique
+            sounds.turn.currentTime = 0;
+            sounds.turn.play();
+        }
+        
+        function updateCommandDisplay() {
+            dom.commandSequence.innerHTML = '';
+            gameConfig.commands.forEach((cmd, index) => {
+                const chip = document.createElement('div');
+                chip.className = 'command-chip';
+                
+                // Mapear comandos para emojis
+                const emojiMap = {
+                  'FRENTE': '⬆️', // pode rotacionar se quiser, mas normalmente fica como está
+                
+  'ESQUERDA': '<span class="icone-comando girar-invertido">↪️</span>',
+  'DIREITA': '<span class="icone-comando girar-invertido">↩️</span>'
+};
+
+                
+                chip.innerHTML = `
+                    ${emojiMap[cmd] || cmd}
+                    <button class="remove-chip" data-index="${index}">✖️</button>
+                `;
+                dom.commandSequence.appendChild(chip);
+                
+                // Adicionar evento para remover comando
+                chip.querySelector('.remove-chip').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(e.target.dataset.index);
+                    gameConfig.commands.splice(idx, 1);
+                    updateCommandDisplay();
+                    
+                    // Som de erro
+                    sounds.error.currentTime = 0;
+                    sounds.error.play();
+                });
+            });
+        }
+        
+        async function executeCommands() {
+            if (gameConfig.commands.length === 0) return;
+            
+            // Desabilitar botões durante a execução
+            document.querySelectorAll('button').forEach(btn => btn.disabled = true);
+            
+            // Executar cada comando sequencialmente
+            for (let i = 0; i < gameConfig.commands.length; i++) {
+                const command = gameConfig.commands[i];
+                await executeCommand(command);
+                gameConfig.player.moves++;
+                dom.movesDisplay.textContent = gameConfig.player.moves;
+                
+                // Verificar se o jogador chegou à saída
+                if (gameConfig.characterPosition.x === gameConfig.exitPosition.x && 
+                    gameConfig.characterPosition.y === gameConfig.exitPosition.y) {
+                    completeLevel();
+                    break;
+                }
+            }
+            
+            // Reabilitar botões
+            document.querySelectorAll('button').forEach(btn => btn.disabled = false);
+        }
+        
+        function executeCommand(command) {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    switch(command) {
+                        case 'FRENTE':
+                            moveForward();
+                            break;
+                        case 'ESQUERDA':
+                            turnLeft();
+                            break;
+                        case 'DIREITA':
+                            turnRight();
+                            break;
+                    }
+                    
+                    // Destacar o comando atual na UI
+                    const chips = document.querySelectorAll('.command-chip');
+                    if (chips.length > 0) {
+                        chips.forEach(chip => chip.classList.remove('highlight'));
+                        if (chips[gameConfig.commands.indexOf(command)]) {
+                            chips[gameConfig.commands.indexOf(command)].classList.add('highlight');
+                        }
+                    }
+                    
+                    resolve();
+                }, 600);
+            });
+        }
+        
+        function moveForward() {
+            const size = gameConfig.levels[gameConfig.currentLevel].size;
+            const scale = 2;
+            let newX = gameConfig.characterPosition.x;
+            let newY = gameConfig.characterPosition.y;
+            
+            // Movimento sempre na direção que o rosto está apontando
+            switch(gameConfig.direction) {
+                case 0: // Norte (frente)
+                    newY++;
+                    break;
+                case 1: // Leste (direita)
+                    newX++;
+                    break;
+                case 2: // Sul (trás)
+                    newY--;
+                    break;
+                case 3: // Oeste (esquerda)
+                    newX--;
+                    break;
+            }
+            
+            // Verificar se o movimento é válido
+            if (newX >= 0 && newX < size && newY >= 0 && newY < size && 
+                gameConfig.maze[newY][newX] !== 1) {
+                gameConfig.characterPosition.x = newX;
+                gameConfig.characterPosition.y = newY;
+                
+                // Atualizar posição do grupo do personagem
+                characterGroup.position.set(
+                    (newX - size/2) * scale + scale/2, 
+                    0, 
+                    (newY - size/2) * scale + scale/2
+                );
+                
+                // Tocar som de movimento
+                sounds.move.currentTime = 0;
+                sounds.move.play();
+                
+                // Feedback visual
+                characterGroup.position.y = 0.2;
+                setTimeout(() => characterGroup.position.y = 0, 200);
+            } else {
+                // Colisão com parede - efeito visual
+                characterGroup.position.y = 0.2;
+                setTimeout(() => characterGroup.position.y = 0, 200);
+                
+                // Tocar som de erro
+                sounds.error.currentTime = 0;
+                sounds.error.play();
+            }
+        }
+        
+        function turnLeft() {
+            gameConfig.direction = (gameConfig.direction + 3) % 4;
+            updateDirectionIndicator();
+            
+            // Tocar som de giro
+            sounds.turn.currentTime = 0;
+            sounds.turn.play();
+        }
+        
+        function turnRight() {
+            gameConfig.direction = (gameConfig.direction + 1) % 4;
+            updateDirectionIndicator();
+            
+            // Tocar som de giro
+            sounds.turn.currentTime = 0;
+            sounds.turn.play();
+        }
+        
+        function completeLevel() {
+            clearInterval(gameConfig.timer);
+            dom.finalMoves.textContent = gameConfig.player.moves;
+            dom.completionMessage.style.display = 'block';
+            
+            // Tocar som de vitória
+            sounds.win.currentTime = 0;
+            sounds.win.play();
+            
+            // Efeito de estrelas
+            for (let i = 0; i < 20; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.animationDelay = `${Math.random() * 1}s`;
+                dom.starContainer.appendChild(star);
+                setTimeout(() => star.remove(), 2000);
+            }
+        }
+        
+        function updateTimer() {
+            if (!gameConfig.player.startTime) return;
+            
+            const now = new Date();
+            const diff = Math.floor((now - gameConfig.player.startTime) / 1000);
+            const minutes = Math.floor(diff / 60).toString().padStart(2, '0');
+            const seconds = (diff % 60).toString().padStart(2, '0');
+            
+            dom.timeDisplay.textContent = `${minutes}:${seconds}`;
+        }
+        
+        document.querySelectorAll('.command-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                addCommand(btn.dataset.command);
+            });
+        });
+        
+        document.getElementById('execute-btn').addEventListener('click', executeCommands);
+        
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            // Reinicia completamente o nível
+            startGame();
+        });
+        
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            // Limpa apenas a sequência de comandos
+            gameConfig.commands = [];
+            updateCommandDisplay();
+        });
+        
+        document.getElementById('next-level-btn').addEventListener('click', () => {
+            dom.completionMessage.style.display = 'none';
+            if (gameConfig.currentLevel < gameConfig.levels.length - 1) {
+                gameConfig.currentLevel++;
+                startGame();
+            } else {
+                // Jogo completo
+                alert('Parabéns! Você completou todos os níveis! 🏆🎊');
+                gameConfig.currentLevel = 0;
+                startGame();
+            }
+        });
+        
+        document.getElementById('player-name').addEventListener('click', () => {
+            const newName = prompt('Digite seu nome:', gameConfig.player.name);
+            if (newName) {
+                gameConfig.player.name = newName;
+                dom.playerName.textContent = newName;
+            }
+        });
+        
+        document.getElementById('music-control').addEventListener('click', () => {
+            if (gameConfig.musicPlaying) {
+                sounds.bgMusic.pause();
+                document.getElementById('music-control').textContent = '🔇';
+                gameConfig.musicPlaying = false;
+            } else {
+                sounds.bgMusic.play();
+                document.getElementById('music-control').textContent = '🎵';
+                gameConfig.musicPlaying = true;
+            }
+        });
+        
+        document.getElementById('close-help').addEventListener('click', () => {
+            document.getElementById('help-overlay').style.display = 'none';
+        });
+        
+        window.addEventListener('load', () => {
+            initThreeJS();
+            startGame();
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = dom.sceneContainer.offsetWidth / dom.sceneContainer.offsetHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(dom.sceneContainer.offsetWidth, dom.sceneContainer.offsetHeight);
+            });
+        });
+    </script>
+</body>
+</html>
